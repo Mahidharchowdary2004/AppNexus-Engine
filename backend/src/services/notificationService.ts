@@ -84,7 +84,8 @@ export const notificationService = {
 
 function interpolate(template: string, context: Record<string, unknown>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
-    const val = context[key] ?? context.record?.[key];
+    const record = context.record as Record<string, unknown> | undefined;
+    const val = context[key] ?? record?.[key];
     return val !== undefined ? String(val) : `{{${key}}}`;
   });
 }
