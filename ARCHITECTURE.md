@@ -99,30 +99,22 @@ Stateless JWT tokens stored in cookies + localStorage. The `requireAuth` middlew
 | Soft delete | ✅ | Configurable per entity |
 | User-scoped data | ✅ | Per entity |
 | Settings editor | ✅ | Edit config in browser |
-| Docker deployment | ✅ | One command |
 
 ## Deployment Options
 
-### Option A: Docker (Recommended)
-```bash
-cp backend/.env.example backend/.env
-# Edit backend/.env with your values
-docker-compose up -d
-```
-
-### Option B: Railway
+### Option A: Railway
 1. Create Railway project
 2. Add PostgreSQL plugin
 3. Deploy backend: set `DATABASE_URL` from Railway
 4. Deploy frontend: set `NEXT_PUBLIC_API_URL` to backend URL
 
-### Option C: Vercel (Frontend) + Railway (Backend)
+### Option B: Vercel (Frontend) + Railway (Backend)
 1. Deploy backend to Railway
 2. Deploy frontend to Vercel
 3. Set `NEXT_PUBLIC_API_URL` in Vercel env
 
-### Option D: Render
-Both services supported — use `render.yaml` (create one based on docker-compose).
+### Option C: Render
+Both services supported — use the native Node.js environments.
 
 ## Extending the System
 

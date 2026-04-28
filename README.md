@@ -9,7 +9,7 @@ configapp/
 ├── frontend/          # Next.js 14 app (config-driven UI renderer)
 ├── backend/           # Node.js + TypeScript API server
 ├── shared/            # Shared TypeScript types
-└── docker-compose.yml # Full stack orchestration
+└── README.md         # Documentation
 ```
 
 ## Features Implemented
@@ -121,11 +121,12 @@ See `shared/types/config.ts` for the full config spec.
 
 ## Deployment
 
-See `docker-compose.yml` for one-command deployment.
+The system is designed to be deployed to platforms like Render, Vercel, or Heroku.
 
-```bash
-docker-compose up -d
-```
+For Render:
+1. Connect your GitHub repository.
+2. Set the Root Directory (e.g., `frontend` or `backend`).
+3. Configure build and start commands as defined in each workspace's `package.json`.
 
 ## Testing Resilience
 
