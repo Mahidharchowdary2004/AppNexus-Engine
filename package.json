@@ -10,9 +10,7 @@
     "install:all": "cd backend && npm install && cd ../frontend && npm install",
     "db:migrate": "cd backend && npx prisma migrate dev",
     "db:generate": "cd backend && npx prisma generate",
-    "test": "cd backend && pnpm test",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down"
+    "test": "cd backend && pnpm test"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
