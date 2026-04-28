@@ -1,0 +1,140 @@
+// backend/prisma/schema.prisma
+// Dynamic entity data is stored as JSONB to support any config
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String?
+  googleId      String?   @unique
+  name          String
+  avatar        String?
+  role          String    @default("user")
+  customData    Json      @default("{}")
+  isActive      Boolean   @default(true)
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  apps          AppInstance[]
+  records       DynamicRecord[]
+  sessions      Session[]
+  csvImports    CsvImport[]
+
+  @@index([email])
+  @@index([googleId])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([userId])
+}
+
+model AppInstance {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  config      Json     // Full AppConfig JSON
+  configHash  String   // MD5 of config for change detection
+  ownerId     String
+  isPublic    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner   User            @relation(fields: [ownerId], references: [id])
+  records DynamicRecord[]
+  schema  EntitySchema[]
+  imports CsvImport[]
+
+  @@index([slug])
+  @@index([ownerId])
+}
+
+// Stores the derived DB schema for each entity
+model EntitySchema {
+  id          String   @id @default(uuid())
+  appId       String
+  entityId    String
+  schema      Json     // Derived schema with types, constraints
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  app AppInstance @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, entityId])
+}
+
+// All user data stored as JSONB — fully dynamic
+model DynamicRecord {
+  id        String   @id @default(uuid())
+  appId     String
+  entityId  String   // which entity in the config this belongs to
+  data      Json     // actual record data
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime? // soft delete support
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  app       AppInstance @relation(fields: [appId], references: [id], onDelete: Cascade)
+  creator   User?       @relation(fields: [createdBy], references: [id])
+
+  @@index([appId, entityId])
+  @@index([createdBy])
+  @@index([appId, entityId, deletedAt])
+}
+
+model CsvImport {
+  id          String   @id @default(uuid())
+  appId       String
+  entityId    String
+  userId      String
+  filename    String
+  status      String   @default("pending") // pending | processing | done | failed
+  totalRows   Int      @default(0)
+  importedRows Int     @default(0)
+  failedRows  Int      @default(0)
+  errors      Json     @default("[]")
+  columnMap   Json     @default("{}") // CSV column → entity field mapping
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  app  AppInstance @relation(fields: [appId], references: [id])
+  user User        @relation(fields: [userId], references: [id])
+
+  @@index([appId, entityId])
+  @@index([userId])
+}
+
+model NotificationLog {
+  id        String   @id @default(uuid())
+  appId     String
+  trigger   String
+  entityId  String?
+  recordId  String?
+  channel   String   // email | webhook
+  status    String   // sent | failed
+  payload   Json
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([appId, trigger])
+}
