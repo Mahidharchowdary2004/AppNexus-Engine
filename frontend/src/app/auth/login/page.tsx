@@ -1,61 +1,20 @@
 'use client';
 export const dynamic = 'force-dynamic';
 // frontend/src/app/auth/login/page.tsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { signInWithPopup } from 'firebase/auth';
 
 export default function LoginPage() {
-  const { login, firebaseLogin, isAuthenticated } = useAuth();
+  const { login, firebaseLogin } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // If already logged in, redirect to dashboard
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard');
-    }
-  }, [isAuthenticated, router]);
-
-  // Handle the redirect result when the page loads back
-  useEffect(() => {
-    if (!auth) {
-      console.log('Firebase Auth not initialized yet');
-      return;
-    }
-    
-    console.log('Checking for redirect result...');
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (result) {
-          console.log('Redirect result found for user:', result.user.email);
-          setLoading(true);
-          try {
-            const idToken = await result.user.getIdToken();
-            console.log('ID Token retrieved, sending to backend...');
-            await firebaseLogin(idToken);
-            console.log('Backend login successful, redirecting to dashboard');
-            router.push('/dashboard');
-          } catch (loginErr: any) {
-            console.error('Backend Login Error:', loginErr);
-            setError(`Server Error: ${loginErr.response?.data?.error || 'Failed to sync with backend'}`);
-          }
-        } else {
-          console.log('No redirect result (this is normal on first load)');
-        }
-      })
-      .catch((err) => {
-        console.error('Redirect Result Error:', err);
-        setError('Authentication failed after redirect. Please try again.');
-        setLoading(false);
-      });
-  }, [auth, firebaseLogin, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,14 +35,17 @@ export default function LoginPage() {
       setError('Google Login is not configured. Please check your environment variables.');
       return;
     }
-    
+    setError('');
+    setLoading(true);
     try {
-      setLoading(true);
-      await signInWithRedirect(auth, googleProvider);
-      // The page will redirect now
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+      await firebaseLogin(idToken);
+      router.push('/dashboard');
     } catch (err: any) {
       console.error('Google Auth Error:', err);
       setError('Google authentication failed. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
