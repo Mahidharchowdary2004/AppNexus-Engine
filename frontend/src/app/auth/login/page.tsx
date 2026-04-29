@@ -6,8 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
-import { useEffect } from 'react';
+import { signInWithPopup } from 'firebase/auth';
 
 export default function LoginPage() {
   const { login, firebaseLogin } = useAuth();
@@ -16,30 +15,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Handle Redirect Result
-  useEffect(() => {
-    if (!auth) return;
-    
-    const handleRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          setLoading(true);
-          const idToken = await result.user.getIdToken();
-          await firebaseLogin(idToken);
-          router.push('/dashboard');
-        }
-      } catch (err: any) {
-        console.error('Redirect Result Error:', err);
-        setError('Authentication failed. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    handleRedirect();
-  }, [auth, firebaseLogin, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,11 +38,26 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      // Use Redirect for production stability
-      await signInWithRedirect(auth, googleProvider);
+      console.log('Initiating Google Popup login...');
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log('Popup login success, getting ID token...');
+      const idToken = await result.user.getIdToken();
+      
+      console.log('Sending ID token to backend...');
+      await firebaseLogin(idToken);
+      
+      console.log('Backend login successful, redirecting...');
+      router.push('/dashboard');
     } catch (err: any) {
       console.error('Google Auth Error:', err);
-      setError('Google authentication failed. Please try again.');
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in cancelled. Please try again.');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('Popup was blocked by your browser. Please allow popups for this site.');
+      } else {
+        setError(`Authentication failed: ${err.message || 'Please try again.'}`);
+      }
+    } finally {
       setLoading(false);
     }
   };
