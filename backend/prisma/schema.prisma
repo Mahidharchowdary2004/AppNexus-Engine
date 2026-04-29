@@ -15,6 +15,7 @@ model User {
   email         String    @unique
   passwordHash  String?
   googleId      String?   @unique
+  firebaseUid   String?   @unique
   name          String
   avatar        String?
   role          String    @default("user")
@@ -31,6 +32,7 @@ model User {
 
   @@index([email])
   @@index([googleId])
+  @@index([firebaseUid])
 }
 
 model Session {

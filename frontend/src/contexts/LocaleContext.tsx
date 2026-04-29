@@ -141,8 +141,8 @@ export function LocaleProvider({ children, appConfig }: LocaleProviderProps) {
     const englishBuiltin = builtInTranslations['en']?.[key];
     if (englishBuiltin) return englishBuiltin;
 
-    // Fall back to provided fallback or the key itself
-    return fallback || key;
+    // Fall back to provided fallback or the key itself (stripping 'nav.' prefix if present)
+    return fallback || key.replace(/^nav\./, '');
   }, [locale, configMessages]);
 
   return (

@@ -46,9 +46,9 @@ export function validateRecord(
         break;
 
       case 'phone':
-        value = String(value).trim();
-        if (value && !/^\+?[0-9\s-]{7,15}$/.test(value as string)) {
-          errors.push({ field: field.id, message: `${field.label} must be a valid phone number`, code: 'INVALID_PHONE' });
+        value = String(value).trim().replace(/[^0-9]/g, '');
+        if (value && !/^[0-9]{10}$/.test(value as string)) {
+          errors.push({ field: field.id, message: `${field.label} must be exactly 10 digits`, code: 'INVALID_PHONE' });
         }
         break;
 

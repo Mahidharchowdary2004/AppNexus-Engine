@@ -16,6 +16,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  firebaseLogin: (idToken: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -50,6 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user);
   };
 
+  const firebaseLogin = async (idToken: string) => {
+    const res = await authApi.firebaseLogin(idToken);
+    const { token, user } = res.data;
+    Cookies.set('token', token, { expires: 7, secure: process.env.NODE_ENV === 'production' });
+    localStorage.setItem('token', token);
+    setUser(user);
+  };
+
   const register = async (email: string, password: string, name: string) => {
     const res = await authApi.register({ email, password, name });
     const { token, user } = res.data;
@@ -67,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, loading, login, firebaseLogin, register, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

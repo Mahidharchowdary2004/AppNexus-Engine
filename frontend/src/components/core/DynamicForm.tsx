@@ -3,8 +3,11 @@
 // Renders a form for any entity based on FieldConfig[]
 
 import { useForm, Controller } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
+import { useParams } from 'next/navigation';
 import { FieldConfig, EntityConfig } from '@/types/config';
 import { useLocale } from '@/contexts/LocaleContext';
+import { appsApi, dataApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 interface DynamicFormProps {
@@ -67,24 +70,31 @@ export function DynamicForm({
         })}
       </div>
 
-      <div className="flex gap-4 pt-4">
+      <div className="flex gap-3 pt-6">
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 bg-blue-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-200 active:scale-[0.98]"
+          className="flex-[2] bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3.5 rounded-[1.25rem] font-black text-base hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_10px_20px_-5px_rgba(37,99,235,0.3)] hover:shadow-[0_15px_30px_-5px_rgba(37,99,235,0.4)] active:scale-[0.96] flex items-center justify-center gap-2"
         >
           {loading ? (
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              {t('common.loading')}
-            </div>
-          ) : (submitLabel || t('common.save'))}
+            <>
+              <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+              {t('common.processing') || 'Synthesizing...'}
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+              {submitLabel || t('common.save')}
+            </>
+          )}
         </button>
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="px-6 py-4 rounded-2xl border-2 border-slate-100 text-slate-600 font-bold hover:bg-slate-50 transition-all active:scale-[0.98]"
+            className="flex-1 px-6 py-3.5 rounded-[1.25rem] bg-slate-100 text-slate-600 font-black text-base hover:bg-slate-200 hover:text-slate-900 transition-all active:scale-[0.96] border border-transparent hover:border-slate-300"
           >
             {t('common.cancel')}
           </button>
@@ -105,7 +115,7 @@ function FieldRenderer({ field, register, control, error }: FieldRendererProps) 
   const { t } = useLocale();
 
   const labelEl = (
-    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-2 px-1">
+    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 px-1">
       {t(field.label)}
       {field.required && <span className="text-rose-500 ml-1">*</span>}
     </label>
@@ -125,16 +135,19 @@ function FieldRenderer({ field, register, control, error }: FieldRendererProps) 
   );
 
   const baseInputClass = cn(
-    'w-full px-5 py-4 rounded-2xl text-base font-semibold transition-all duration-200 outline-none border-2',
-    'hover:border-slate-200',
+    'w-full px-4 py-3 rounded-[1rem] text-sm font-bold transition-all duration-300 outline-none border-2',
+    'placeholder:text-slate-300 placeholder:font-medium',
     error 
-      ? 'border-rose-100 bg-rose-50/50 text-rose-900 focus:border-rose-300 focus:bg-white' 
-      : 'border-slate-100 bg-slate-50/50 text-slate-900 focus:border-blue-500 focus:bg-white focus:shadow-xl focus:shadow-blue-500/10',
-    field.readOnly ? 'bg-slate-100/50 cursor-not-allowed border-slate-100 text-slate-400' : ''
+      ? 'border-rose-100 bg-rose-50/50 text-rose-900 focus:border-rose-400 focus:bg-white focus:shadow-[0_15px_30px_-10px_rgba(225,29,72,0.1)]' 
+      : 'border-slate-100 bg-white/50 text-slate-900 focus:border-blue-500 focus:bg-white focus:shadow-[0_15px_30px_-10px_rgba(37,99,235,0.15)]',
+    field.readOnly ? 'bg-slate-100/50 cursor-not-allowed border-slate-100 text-slate-400 opacity-60' : 'hover:border-slate-200'
   );
 
   const validation: Record<string, unknown> = {};
-  if (field.required) validation.required = field.label + ' is required';
+  // Fields are required by default unless explicitly set to false
+  const isRequired = field.required !== false;
+  if (isRequired) validation.required = t(field.label) + ' is required';
+  
   if (field.validation?.minLength) validation.minLength = { value: field.validation.minLength, message: `Min ${field.validation.minLength} chars` };
   if (field.validation?.maxLength) validation.maxLength = { value: field.validation.maxLength, message: `Max ${field.validation.maxLength} chars` };
   if (field.validation?.min) validation.min = { value: field.validation.min, message: `Min value ${field.validation.min}` };
@@ -293,6 +306,38 @@ function FieldRenderer({ field, register, control, error }: FieldRendererProps) 
         </div>
       );
 
+    case 'phone':
+      return (
+        <div>
+          {labelEl}
+          <div className="relative group/phone">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <span className="text-slate-400 font-bold text-[15px] tracking-wider">+91</span>
+            </div>
+            <input
+              type="tel"
+              {...register(field.id, {
+                ...validation,
+                pattern: {
+                  value: /^[0-9]{10}$/,
+                  message: 'Enter exactly 10 digits'
+                },
+                minLength: { value: 10, message: 'Exactly 10 digits required' },
+                maxLength: { value: 10, message: 'Exactly 10 digits required' }
+              })}
+              placeholder="00000 00000"
+              readOnly={field.readOnly}
+              className={cn(baseInputClass, "pl-16 font-mono tracking-widest")}
+              onChange={(e) => {
+                // Prevent non-numeric input
+                e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+              }}
+            />
+          </div>
+          {errorEl}{hintEl}
+        </div>
+      );
+
     case 'color':
       return (
         <div>
@@ -303,6 +348,17 @@ function FieldRenderer({ field, register, control, error }: FieldRendererProps) 
           </div>
           {errorEl}{hintEl}
         </div>
+      );
+
+    case 'relation':
+      return (
+        <RelationField
+          field={field}
+          register={register}
+          control={control}
+          error={error}
+          validation={validation}
+        />
       );
 
     case 'password':
@@ -320,7 +376,7 @@ function FieldRenderer({ field, register, control, error }: FieldRendererProps) 
       );
 
     default:
-      const knownTypes = ['text', 'email', 'url', 'phone', 'password', 'number', 'date', 'datetime', 'select', 'multiselect', 'boolean', 'textarea', 'rich_text', 'color'];
+      const knownTypes = ['text', 'email', 'url', 'phone', 'password', 'number', 'date', 'datetime', 'select', 'multiselect', 'boolean', 'textarea', 'rich_text', 'color', 'relation'];
       if (!knownTypes.includes(field.type)) {
         return (
           <div className="p-5 bg-rose-50/50 rounded-3xl border-2 border-dashed border-rose-100 relative overflow-hidden group">
@@ -347,4 +403,57 @@ function FieldRenderer({ field, register, control, error }: FieldRendererProps) 
         </div>
       );
   }
+}
+
+function RelationField({ field, control, error, validation }: any) {
+  const { t } = useLocale();
+  const { slug: appSlug } = useParams<{ slug: string }>();
+  
+  const { data: recordsRes, isLoading } = useQuery({
+    queryKey: ['records', appSlug, field.entity],
+    queryFn: () => dataApi.list(appSlug, field.entity!, { pageSize: 1000 }),
+    enabled: !!appSlug && !!field.entity,
+  });
+
+  const records = recordsRes?.data || [];
+
+  return (
+    <div>
+      <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-2 px-1">
+        {t(field.label)}
+        {field.required && <span className="text-rose-500 ml-1">*</span>}
+      </label>
+      <Controller
+        name={field.id}
+        control={control}
+        rules={validation}
+        render={({ field: f }) => (
+          <select
+            {...f}
+            className={cn(
+              'w-full px-5 py-4 rounded-2xl text-base font-semibold transition-all duration-200 outline-none border-2',
+              error 
+                ? 'border-rose-100 bg-rose-50/50 text-rose-900 focus:border-rose-300 focus:bg-white' 
+                : 'border-slate-100 bg-slate-50/50 text-slate-900 focus:border-blue-500 focus:bg-white focus:shadow-xl focus:shadow-blue-500/10'
+            )}
+          >
+            <option value="">{isLoading ? 'Loading records...' : `Select ${field.label}...`}</option>
+            {records.map((r: any) => (
+              <option key={r.id} value={r.id}>
+                {r.name || r.title || r.label || r.id}
+              </option>
+            ))}
+          </select>
+        )}
+      />
+      {error && (
+        <div className="flex items-center gap-1.5 text-rose-600 mt-2 font-bold text-[11px] px-1">
+          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          {error}
+        </div>
+      )}
+    </div>
+  );
 }

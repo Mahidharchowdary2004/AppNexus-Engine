@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { requireAuth } from '../middleware/auth';
+import { auth as firebaseAuth } from '../lib/firebase';
 
 const prisma = new PrismaClient();
 export const authRouter = Router();
@@ -155,5 +156,69 @@ authRouter.get('/google/callback', async (req: Request, res: Response) => {
     res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
   } catch (err) {
     res.redirect(`${frontendUrl}/auth/error`);
+  }
+});
+
+// POST /api/auth/firebase
+authRouter.post('/firebase', async (req: Request, res: Response) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ success: false, error: 'ID Token required' });
+    }
+
+    // Verify token with Firebase Admin
+    const decodedToken = await firebaseAuth.verifyIdToken(idToken);
+    const { uid, email, name, picture } = decodedToken;
+
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email not provided by Firebase' });
+    }
+
+    // Upsert user
+    let user = await prisma.user.findUnique({ where: { firebaseUid: uid } });
+    if (!user) {
+      // Try to find by email if no firebaseUid exists yet
+      user = await prisma.user.findUnique({ where: { email } });
+      
+      if (user) {
+        // Link firebaseUid to existing user
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { firebaseUid: uid, avatar: picture || user.avatar },
+        });
+      } else {
+        // Create new user
+        user = await prisma.user.create({
+          data: {
+            email,
+            firebaseUid: uid,
+            name: name || email.split('@')[0],
+            avatar: picture,
+            isActive: true,
+            emailVerified: true,
+          },
+        });
+      }
+    }
+
+    const token = signToken(user.id, user.email, user.role);
+    res.json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          avatar: user.avatar,
+        },
+      },
+    });
+  } catch (err: any) {
+    console.error('Firebase Auth Error:', err);
+    res.status(401).json({ success: false, error: 'Authentication failed' });
   }
 });
