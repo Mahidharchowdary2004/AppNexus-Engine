@@ -169,8 +169,10 @@ authRouter.post('/firebase', async (req: Request, res: Response) => {
     }
 
     // Verify token with Firebase Admin
+    console.log('--- Incoming Firebase Login ---');
     const decodedToken = await firebaseAuth.verifyIdToken(idToken);
     const { uid, email, name, picture } = decodedToken;
+    console.log(`Verified token for: ${email} (UID: ${uid})`);
 
     if (!email) {
       return res.status(400).json({ success: false, error: 'Email not provided by Firebase' });

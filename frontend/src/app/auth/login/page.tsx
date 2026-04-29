@@ -18,15 +18,29 @@ export default function LoginPage() {
 
   // Handle the redirect result when the page loads back
   useEffect(() => {
-    if (!auth) return;
+    if (!auth) {
+      console.log('Firebase Auth not initialized yet');
+      return;
+    }
     
+    console.log('Checking for redirect result...');
     getRedirectResult(auth)
       .then(async (result) => {
         if (result) {
+          console.log('Redirect result found for user:', result.user.email);
           setLoading(true);
-          const idToken = await result.user.getIdToken();
-          await firebaseLogin(idToken);
-          router.push('/dashboard');
+          try {
+            const idToken = await result.user.getIdToken();
+            console.log('ID Token retrieved, sending to backend...');
+            await firebaseLogin(idToken);
+            console.log('Backend login successful, redirecting to dashboard');
+            router.push('/dashboard');
+          } catch (loginErr: any) {
+            console.error('Backend Login Error:', loginErr);
+            setError(`Server Error: ${loginErr.response?.data?.error || 'Failed to sync with backend'}`);
+          }
+        } else {
+          console.log('No redirect result (this is normal on first load)');
         }
       })
       .catch((err) => {
