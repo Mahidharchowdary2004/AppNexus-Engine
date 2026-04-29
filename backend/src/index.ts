@@ -16,7 +16,17 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Security
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "script-src": ["'self'", "'unsafe-inline'", "https://apis.google.com", "https://*.firebaseapp.com", "https://*.googleapis.com"],
+      "connect-src": ["'self'", "https://*.googleapis.com", "https://*.firebaseapp.com", "https://*.google-analytics.com"],
+      "frame-src": ["'self'", "https://*.firebaseapp.com", "https://*.google.com"],
+      "img-src": ["'self'", "data:", "https://*.googleusercontent.com", "https://*.gstatic.com"]
+    },
+  },
+}));
 const allowedOrigins = [
   ...(process.env.FRONTEND_URL?.split(',') || []),
   'http://localhost:3000',
