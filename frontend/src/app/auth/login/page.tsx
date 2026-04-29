@@ -35,16 +35,22 @@ export default function LoginPage() {
       setError('Google Login is not configured. Please check your environment variables.');
       return;
     }
-    setError('');
-    setLoading(true);
+    
+    // We trigger the popup immediately to prevent browser blocking
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      setLoading(true);
+      setError('');
       const idToken = await result.user.getIdToken();
       await firebaseLogin(idToken);
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Google Auth Error:', err);
-      setError('Google authentication failed. Please try again.');
+      if (err.code === 'auth/popup-blocked') {
+        setError('Popup blocked! Please allow popups for this site or check if your Vercel domain is added to Firebase Authorized Domains.');
+      } else {
+        setError('Google authentication failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
