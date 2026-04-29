@@ -15,6 +15,9 @@ import { requestLogger } from './middleware/requestLogger';
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Trust proxy for Render/Vercel
+app.set('trust proxy', 1);
+
 // Security
 app.use(helmet());
 const allowedOrigins = [

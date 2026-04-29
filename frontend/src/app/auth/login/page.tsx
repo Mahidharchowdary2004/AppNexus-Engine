@@ -9,12 +9,19 @@ import { auth, googleProvider } from '@/lib/firebase';
 import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
 
 export default function LoginPage() {
-  const { login, firebaseLogin } = useAuth();
+  const { login, firebaseLogin, isAuthenticated } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // If already logged in, redirect to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, router]);
 
   // Handle the redirect result when the page loads back
   useEffect(() => {
