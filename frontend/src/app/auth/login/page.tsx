@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithPopup } from 'firebase/auth';
+import { useEffect } from 'react';
+import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
 
 export default function LoginPage() {
   const { login, firebaseLogin } = useAuth();
@@ -15,6 +16,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Handle redirect result
+  useEffect(() => {
+    if (!auth) return;
+    
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result) {
+          setLoading(true);
+          const idToken = await result.user.getIdToken();
+          await firebaseLogin(idToken);
+          router.push('/dashboard');
+        }
+      })
+      .catch((err) => {
+        console.error('Redirect Result Error:', err);
+        setError('Google login failed. Please try again.');
+      })
+      .finally(() => setLoading(false));
+  }, [auth, firebaseLogin, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,14 +59,10 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const idToken = await result.user.getIdToken();
-      await firebaseLogin(idToken);
-      router.push('/dashboard');
+      await signInWithRedirect(auth, googleProvider);
     } catch (err: any) {
       console.error('Google Auth Error:', err);
       setError('Google authentication failed. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
