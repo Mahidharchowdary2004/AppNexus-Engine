@@ -17,8 +17,32 @@ const PORT = process.env.PORT || 4000;
 
 // Security
 app.use(helmet());
+const allowedOrigins = [
+  ...(process.env.FRONTEND_URL?.split(',') || []),
+  'http://localhost:3000',
+  'https://app-nexus-engine-frontend.vercel.app'
+].filter(Boolean).map(o => o.trim()) as string[];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      // Exact match
+      if (allowedOrigin === origin) return true;
+      // Handle potential trailing slashes
+      if (allowedOrigin.replace(/\/$/, '') === origin.replace(/\/$/, '')) return true;
+      return false;
+    });
+
+    if (isAllowed || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked for origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 
