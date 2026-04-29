@@ -12,14 +12,24 @@ const firebaseConfig = {
   measurementId: "G-XBK11QXFR2" // Hardcoded since it was in the snippet
 };
 
-// Initialize Firebase
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
+// Initialize Firebase safely
+let app;
+let auth;
+let googleProvider;
+
+if (typeof window !== 'undefined' || process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+  try {
+    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    googleProvider = new GoogleAuthProvider();
+  } catch (error) {
+    console.error("Firebase initialization error:", error);
+  }
+}
 
 // Initialize Analytics only if supported (browser)
 let analytics;
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && app) {
   isSupported().then(yes => {
     if (yes) analytics = getAnalytics(app);
   });
