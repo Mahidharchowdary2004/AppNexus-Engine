@@ -80,7 +80,7 @@ export function AppLayout({ appConfig, appSlug, children }: AppLayoutProps) {
             )}
             <span className="font-bold text-slate-900 text-lg truncate tracking-tight">{appConfig.name}</span>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={() => setSidebarOpen(false)} aria-label="Close sidebar" className="lg:hidden p-2 text-slate-400 hover:text-slate-600 focus-visible:ring-2 transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
@@ -169,7 +169,7 @@ export function AppLayout({ appConfig, appSlug, children }: AppLayoutProps) {
                 <p className="text-sm font-bold text-slate-900 truncate tracking-tight">{user.name}</p>
                 <p className="text-[11px] text-slate-400 truncate font-medium">{user.email}</p>
               </div>
-              <button onClick={logout} title={t('auth.logout')} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+              <button onClick={logout} title={t('auth.logout')} aria-label={t('auth.logout')} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 focus-visible:ring-2 rounded-xl transition-all">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
@@ -185,7 +185,8 @@ export function AppLayout({ appConfig, appSlug, children }: AppLayoutProps) {
         <header className="flex items-center gap-3 px-6 py-4 bg-white/80 backdrop-blur-md border-b border-slate-200/80">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            aria-label="Open sidebar"
+            className="lg:hidden p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus-visible:ring-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
