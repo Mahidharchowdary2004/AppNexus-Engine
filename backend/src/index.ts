@@ -25,17 +25,12 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
     const isAllowed = allowedOrigins.some(allowedOrigin => {
-      // Exact match
       if (allowedOrigin === origin) return true;
-      // Handle potential trailing slashes
       if (allowedOrigin.replace(/\/$/, '') === origin.replace(/\/$/, '')) return true;
       return false;
     });
-
     if (isAllowed || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
@@ -83,143 +78,312 @@ app.get('/', (req, res) => {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Nexus Engine API | Service Dashboard</title>
-      <script src="https://cdn.tailwindcss.com"></script>
-      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
       <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         :root {
-          --primary: #3b82f6;
-          --secondary: #6366f1;
-          --bg: #020617;
+          --amber:   #fbbf24;
+          --amber-d: #f97316;
+          --green:   #4ade80;
+          --blue:    #60a5fa;
+          --purple:  #a78bfa;
+          --bg:      #080c10;
+          --surface: #0d1117;
+          --border:  rgba(251,191,36,0.12);
+          --border-h:rgba(251,191,36,0.22);
+          --muted:   #475569;
+          --subtle:  #1e293b;
         }
-        body { 
-          font-family: 'Plus Jakarta Sans', sans-serif; 
-          background-color: var(--bg);
-          background-image: 
-            radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
-            radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%);
-          color: #f8fafc;
-          overflow: hidden;
+
+        html, body {
+          height: 100%;
+          background: var(--bg);
+          color: #e2e8f0;
+          font-family: 'Space Grotesk', sans-serif;
+          -webkit-font-smoothing: antialiased;
         }
-        .glass { 
-          background: rgba(15, 23, 42, 0.6); 
-          backdrop-filter: blur(20px); 
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+        body {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          padding: 2rem 1.25rem;
+          position: relative;
+          overflow-x: hidden;
         }
-        .glass:hover {
-          border-color: rgba(59, 130, 246, 0.3);
-          transform: translateY(-2px);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+        /* ── Background layers ── */
+        .bg-grid {
+          position: fixed; inset: 0; z-index: 0;
+          background-image:
+            linear-gradient(rgba(251,191,36,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(251,191,36,0.04) 1px, transparent 1px);
+          background-size: 40px 40px;
+          pointer-events: none;
         }
-        .accent-gradient { 
-          background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+        .bg-scanlines {
+          position: fixed; inset: 0; z-index: 0;
+          background: repeating-linear-gradient(
+            0deg, transparent, transparent 2px,
+            rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px
+          );
+          pointer-events: none;
         }
-        .glow {
-          box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        .bg-orb {
+          position: fixed; border-radius: 50%;
+          filter: blur(90px); pointer-events: none; z-index: 0;
         }
-        @keyframes float {
-          0% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(5deg); }
-          100% { transform: translateY(0px) rotate(0deg); }
+
+        /* ── Layout ── */
+        .shell {
+          position: relative; z-index: 1;
+          width: 100%; max-width: 860px;
         }
-        .floating-blob {
-          position: absolute;
-          width: 300px;
-          height: 300px;
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(99, 102, 241, 0.1));
-          filter: blur(80px);
-          border-radius: 50%;
-          z-index: -1;
-          animation: float 20s infinite ease-in-out;
+
+        /* ── Status bar ── */
+        .status-bar {
+          display: flex; align-items: center; gap: 10px;
+          margin-bottom: 1.75rem;
+          font-family: 'Space Mono', monospace;
+          font-size: 10px; letter-spacing: 0.18em;
+          color: #86efac; text-transform: uppercase;
         }
+        .status-dot {
+          width: 6px; height: 6px; border-radius: 50%;
+          background: var(--green);
+          box-shadow: 0 0 8px var(--green);
+          animation: blink-dot 2s infinite;
+          flex-shrink: 0;
+        }
+        @keyframes blink-dot { 0%,100%{opacity:1} 50%{opacity:0.25} }
+        .status-rule {
+          flex: 1; height: 1px;
+          background: linear-gradient(90deg, rgba(74,222,128,0.35) 0%, transparent 100%);
+        }
+        .status-date { color: var(--muted); }
+
+        /* ── Header ── */
+        .header { margin-bottom: 2.25rem; }
+        .eyebrow {
+          font-family: 'Space Mono', monospace;
+          font-size: 10px; letter-spacing: 0.3em;
+          color: var(--amber); text-transform: uppercase;
+          margin-bottom: 0.5rem; opacity: 0.75;
+        }
+        .title {
+          font-size: clamp(2.4rem, 7vw, 3.5rem);
+          font-weight: 700; line-height: 1;
+          letter-spacing: -0.025em; color: #f8fafc;
+        }
+        .title-accent {
+          background: linear-gradient(100deg, var(--amber) 0%, var(--amber-d) 100%);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        .subtitle {
+          font-family: 'Space Mono', monospace;
+          font-size: 12px; letter-spacing: 0.06em;
+          color: #475569; margin-top: 0.6rem;
+        }
+        .cursor {
+          color: var(--amber);
+          animation: blink-cursor 1s step-end infinite;
+        }
+        @keyframes blink-cursor { 0%,100%{opacity:1} 50%{opacity:0} }
+
+        /* ── HUD grid ── */
+        .hud-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 1px;
+          background: var(--border);
+          border: 1px solid var(--border);
+          margin-bottom: 1px;
+        }
+        .hud-cell {
+          background: var(--bg);
+          padding: 1.25rem 1.5rem;
+          position: relative;
+          transition: background 0.2s;
+        }
+        .hud-cell:hover { background: var(--surface); }
+        .hud-corner {
+          position: absolute; top: 8px; right: 8px;
+          width: 5px; height: 5px;
+          border-top: 1px solid rgba(251,191,36,0.25);
+          border-right: 1px solid rgba(251,191,36,0.25);
+        }
+        .hud-label {
+          font-family: 'Space Mono', monospace;
+          font-size: 9px; letter-spacing: 0.22em;
+          color: var(--muted); text-transform: uppercase;
+          margin-bottom: 0.5rem;
+        }
+        .hud-value {
+          font-family: 'Space Mono', monospace;
+          font-size: 14px; font-weight: 700;
+          color: var(--amber);
+        }
+        .hud-value.green  { color: var(--green); }
+        .hud-value.blue   { color: var(--blue); }
+
+        /* ── Routes panel ── */
+        .routes-panel {
+          border: 1px solid var(--border);
+          border-top: none;
+          margin-bottom: 1px;
+        }
+        .routes-header {
+          padding: 0.875rem 1.5rem;
+          border-bottom: 1px solid rgba(251,191,36,0.07);
+          font-family: 'Space Mono', monospace;
+          font-size: 9px; letter-spacing: 0.22em;
+          color: var(--muted); text-transform: uppercase;
+        }
+        .route-row {
+          display: flex; align-items: center; gap: 14px;
+          padding: 0.875rem 1.5rem;
+          border-bottom: 1px solid rgba(251,191,36,0.05);
+          font-family: 'Space Mono', monospace;
+          font-size: 11px;
+          transition: background 0.15s;
+        }
+        .route-row:last-child { border-bottom: none; }
+        .route-row:hover { background: rgba(251,191,36,0.03); }
+        .route-tag {
+          font-size: 9px; font-weight: 700;
+          letter-spacing: 0.1em; text-transform: uppercase;
+          padding: 3px 8px; border-radius: 2px;
+          min-width: 56px; text-align: center;
+          flex-shrink: 0;
+        }
+        .tag-auth   { background: rgba(96,165,250,0.1);  color: var(--blue);   border: 1px solid rgba(96,165,250,0.2); }
+        .tag-apps   { background: rgba(167,139,250,0.1); color: var(--purple); border: 1px solid rgba(167,139,250,0.2); }
+        .tag-data   { background: rgba(74,222,128,0.08); color: var(--green);  border: 1px solid rgba(74,222,128,0.18); }
+        .tag-admin  { background: rgba(251,191,36,0.08); color: var(--amber);  border: 1px solid rgba(251,191,36,0.2); }
+        .route-path { color: #94a3b8; flex: 1; }
+        .route-arrow { color: rgba(251,191,36,0.2); }
+        .route-desc { font-size: 9px; color: #334155; letter-spacing: 0.08em; text-transform: uppercase; }
+
+        /* ── Log panel ── */
+        .log-panel {
+          border: 1px solid var(--border);
+          border-top: none;
+          padding: 0.875rem 1.5rem;
+          font-family: 'Space Mono', monospace;
+          font-size: 10px; line-height: 1.9;
+          margin-bottom: 1.25rem;
+        }
+        .log-row { display: flex; gap: 14px; }
+        .log-time { color: #334155; min-width: 58px; flex-shrink: 0; }
+        .log-ok   { color: var(--green); }
+        .log-inf  { color: var(--blue); }
+        .log-warn { color: var(--amber); }
+        .log-msg  { color: #4b5563; }
+
+        /* ── Footer ── */
+        .footer {
+          display: flex; align-items: center; justify-content: space-between;
+          font-family: 'Space Mono', monospace;
+          font-size: 9px; letter-spacing: 0.15em;
+          color: var(--subtle); text-transform: uppercase;
+        }
+        .footer-right { color: #2d3748; }
       </style>
     </head>
-    <body class="min-h-screen flex items-center justify-center p-6 relative">
-      <div class="floating-blob" style="top: 10%; left: 10%;"></div>
-      <div class="floating-blob" style="bottom: 10%; right: 10%; animation-delay: -5s;"></div>
+    <body>
+      <div class="bg-grid"></div>
+      <div class="bg-scanlines"></div>
+      <div class="bg-orb" style="width:320px;height:320px;top:-100px;left:-100px;background:rgba(251,191,36,0.055);"></div>
+      <div class="bg-orb" style="width:260px;height:260px;bottom:-80px;right:0;background:rgba(249,115,22,0.045);"></div>
 
-      <div class="max-w-4xl w-full space-y-10 relative z-10">
-        <!-- Header -->
-        <div class="text-center space-y-6">
-          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-blue-500/20 text-blue-400 text-xs font-bold tracking-widest uppercase mb-4 glow">
-            <span class="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
-            System Live & Operational
-          </div>
-          <h1 class="text-6xl font-extrabold tracking-tight text-white leading-tight">
-            Nexus <span class="accent-gradient">Engine</span>
-          </h1>
-          <p class="text-slate-400 text-xl max-w-2xl mx-auto font-medium leading-relaxed">
-            Architectural JSON Orchestrator & Dynamic Synthesis Layer
-          </p>
+      <div class="shell">
+
+        <div class="status-bar">
+          <div class="status-dot"></div>
+          ALL SYSTEMS NOMINAL
+          <div class="status-rule"></div>
+          <span class="status-date">${new Date().toUTCString()}</span>
         </div>
 
-        <!-- Dashboard -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div class="glass p-10 rounded-[2.5rem] space-y-8">
-            <div class="flex items-center justify-between">
-              <h3 class="text-2xl font-bold text-white tracking-tight">Core Vitals</h3>
-              <div class="h-10 w-10 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-              </div>
-            </div>
-            <div class="space-y-5 text-base">
-              <div class="flex justify-between items-center border-b border-white/5 pb-3">
-                <span class="text-slate-400 font-medium">Environment</span>
-                <span class="px-3 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-bold border border-blue-500/20 uppercase tracking-wider">${status.env}</span>
-              </div>
-              <div class="flex justify-between items-center border-b border-white/5 pb-3">
-                <span class="text-slate-400 font-medium">API Version</span>
-                <span class="text-white font-bold">${status.version}</span>
-              </div>
-              <div class="flex justify-between items-center border-b border-white/5 pb-3">
-                <span class="text-slate-400 font-medium">Live Uptime</span>
-                <span class="text-white font-bold">${Math.floor(status.uptime / 3600)}h ${Math.floor((status.uptime % 3600) / 60)}m</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-slate-400 font-medium">Region</span>
-                <span class="text-white font-bold">Global / Edge</span>
-              </div>
-            </div>
-          </div>
+        <div class="header">
+          <div class="eyebrow">◈ NEXUS ENGINE / ORCHESTRATOR v${status.version}</div>
+          <div class="title">Service <span class="title-accent">Dashboard</span></div>
+          <div class="subtitle">architectural JSON synthesis layer &amp; runtime dispatcher<span class="cursor">_</span></div>
+        </div>
 
-          <div class="glass p-10 rounded-[2.5rem] space-y-8">
-             <div class="flex items-center justify-between">
-              <h3 class="text-2xl font-bold text-white tracking-tight">API Interface</h3>
-              <div class="h-10 w-10 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-                <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-              </div>
-            </div>
-            <div class="space-y-4">
-              <div class="group p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                <div class="flex items-center gap-3">
-                  <span class="text-[10px] font-black px-2 py-1 bg-blue-500/20 text-blue-400 rounded-md tracking-tighter uppercase">Identity</span>
-                  <code class="text-xs text-slate-300 font-mono">/api/auth/*</code>
-                </div>
-              </div>
-              <div class="group p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                <div class="flex items-center gap-3">
-                  <span class="text-[10px] font-black px-2 py-1 bg-purple-500/20 text-purple-400 rounded-md tracking-tighter uppercase">Apps</span>
-                  <code class="text-xs text-slate-300 font-mono">/api/apps/*</code>
-                </div>
-              </div>
-              <div class="group p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                <div class="flex items-center gap-3">
-                  <span class="text-[10px] font-black px-2 py-1 bg-green-500/20 text-green-400 rounded-md tracking-tighter uppercase">Runtime</span>
-                  <code class="text-xs text-slate-300 font-mono">/api/data/*</code>
-                </div>
-              </div>
-            </div>
+        <div class="hud-grid">
+          <div class="hud-cell">
+            <div class="hud-corner"></div>
+            <div class="hud-label">Environment</div>
+            <div class="hud-value">${status.env.toUpperCase()}</div>
+          </div>
+          <div class="hud-cell">
+            <div class="hud-corner"></div>
+            <div class="hud-label">API Version</div>
+            <div class="hud-value">${status.version}</div>
+          </div>
+          <div class="hud-cell">
+            <div class="hud-corner"></div>
+            <div class="hud-label">Server Uptime</div>
+            <div class="hud-value green">${Math.floor(status.uptime / 3600)}h ${Math.floor((status.uptime % 3600) / 60)}m ${Math.floor(status.uptime % 60)}s</div>
+          </div>
+          <div class="hud-cell">
+            <div class="hud-corner"></div>
+            <div class="hud-label">Region</div>
+            <div class="hud-value blue">GLOBAL / EDGE</div>
           </div>
         </div>
 
-        <!-- Footer -->
-        <div class="text-center pt-10">
-          <p class="text-slate-500 text-sm font-medium tracking-wide">
-            &copy; 2026 Nexus Engine &bull; Synthesized by <span class="text-blue-500/80">Advanced AI</span>
-          </p>
+        <div class="routes-panel">
+          <div class="routes-header">◈ API INTERFACE — REGISTERED ROUTE NAMESPACES</div>
+          <div class="route-row">
+            <span class="route-tag tag-auth">Identity</span>
+            <span class="route-path">/api/auth/*</span>
+            <span class="route-arrow">→</span>
+            <span class="route-desc">Auth Gateway</span>
+          </div>
+          <div class="route-row">
+            <span class="route-tag tag-apps">Apps</span>
+            <span class="route-path">/api/apps/*</span>
+            <span class="route-arrow">→</span>
+            <span class="route-desc">App Registry</span>
+          </div>
+          <div class="route-row">
+            <span class="route-tag tag-data">Runtime</span>
+            <span class="route-path">/api/apps/:appSlug/data/*</span>
+            <span class="route-arrow">→</span>
+            <span class="route-desc">Dynamic Data Layer</span>
+          </div>
+          <div class="route-row">
+            <span class="route-tag tag-data">CSV</span>
+            <span class="route-path">/api/apps/:appSlug/csv/*</span>
+            <span class="route-arrow">→</span>
+            <span class="route-desc">CSV Export Layer</span>
+          </div>
+          <div class="route-row" style="border-bottom:none;">
+            <span class="route-tag tag-admin">Admin</span>
+            <span class="route-path">/api/admin/*</span>
+            <span class="route-arrow">→</span>
+            <span class="route-desc">Admin Controls</span>
+          </div>
         </div>
+
+        <div class="log-panel">
+          <div class="log-row"><span class="log-time">BOOT</span><span class="log-ok">OK</span><span class="log-msg">server bound to port ${PORT} — awaiting connections</span></div>
+          <div class="log-row"><span class="log-time">BOOT</span><span class="log-inf">INF</span><span class="log-msg">route table compiled — 5 namespaces registered</span></div>
+          <div class="log-row"><span class="log-time">BOOT</span><span class="log-ok">OK</span><span class="log-msg">CORS configured — ${allowedOrigins.length} allowed origin(s)</span></div>
+          <div class="log-row"><span class="log-time">BOOT</span><span class="log-inf">INF</span><span class="log-msg">rate limit active — 500 req / 15 min per IP</span></div>
+          <div class="log-row"><span class="log-time">LIVE</span><span class="log-ok">OK</span><span class="log-msg">health probe passed — timestamp ${status.timestamp}</span></div>
+        </div>
+
+        <div class="footer">
+          <span>© 2026 Nexus Engine Corp.</span>
+          <span class="footer-right">synthesized by advanced AI ◈ all systems go</span>
+        </div>
+
       </div>
     </body>
     </html>
@@ -235,7 +399,7 @@ app.get('/health', (req, res) => {
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`✅ ConfigApp backend running on port ${PORT}`);
+  console.log(`✅ Nexus Engine backend running on port ${PORT}`);
 });
 
 export default app;
