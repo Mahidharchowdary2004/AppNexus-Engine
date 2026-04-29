@@ -1,4 +1,5 @@
 'use client';
+export const dynamic = 'force-dynamic';
 // frontend/src/app/auth/register/page.tsx
 import { useState } from 'react';
 import Link from 'next/link';
