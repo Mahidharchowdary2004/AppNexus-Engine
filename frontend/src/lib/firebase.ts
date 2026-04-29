@@ -13,9 +13,9 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase safely
-let app;
-let auth;
-let googleProvider;
+let app: any;
+let auth: any;
+let googleProvider: any;
 
 if (typeof window !== 'undefined' || process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
   try {
