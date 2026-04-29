@@ -1,12 +1,12 @@
 'use client';
 export const dynamic = 'force-dynamic';
 // frontend/src/app/auth/login/page.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
 
 export default function LoginPage() {
   const { login, firebaseLogin } = useAuth();
@@ -15,6 +15,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Handle the redirect result when the page loads back
+  useEffect(() => {
+    if (!auth) return;
+    
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result) {
+          setLoading(true);
+          const idToken = await result.user.getIdToken();
+          await firebaseLogin(idToken);
+          router.push('/dashboard');
+        }
+      })
+      .catch((err) => {
+        console.error('Redirect Result Error:', err);
+        setError('Authentication failed after redirect. Please try again.');
+        setLoading(false);
+      });
+  }, [auth, firebaseLogin, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,22 +56,13 @@ export default function LoginPage() {
       return;
     }
     
-    // We trigger the popup immediately to prevent browser blocking
     try {
-      const result = await signInWithPopup(auth, googleProvider);
       setLoading(true);
-      setError('');
-      const idToken = await result.user.getIdToken();
-      await firebaseLogin(idToken);
-      router.push('/dashboard');
+      await signInWithRedirect(auth, googleProvider);
+      // The page will redirect now
     } catch (err: any) {
       console.error('Google Auth Error:', err);
-      if (err.code === 'auth/popup-blocked') {
-        setError('Popup blocked! Please allow popups for this site or check if your Vercel domain is added to Firebase Authorized Domains.');
-      } else {
-        setError('Google authentication failed. Please try again.');
-      }
-    } finally {
+      setError('Google authentication failed. Please try again.');
       setLoading(false);
     }
   };
