@@ -31,6 +31,10 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
+    if (!auth || !googleProvider) {
+      setError('Google Login is not configured. Please check your environment variables.');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
