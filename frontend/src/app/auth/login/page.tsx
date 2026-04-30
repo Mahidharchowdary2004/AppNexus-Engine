@@ -11,6 +11,7 @@ import { signInWithRedirect, getRedirectResult, signInWithPopup, type UserCreden
 export default function LoginPage() {
   const { login, firebaseLogin } = useAuth();
   const router = useRouter();
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -100,7 +101,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isProduction) {
-        log('Using redirect flow in production...');
+        if (apiBaseUrl) {
+          log('Using backend Google OAuth flow in production...');
+          window.location.href = `${apiBaseUrl}/api/auth/google`;
+          return;
+        }
+
+        log('API URL missing, falling back to Firebase redirect flow...');
         await signInWithRedirect(currentAuth, currentGoogleProvider);
         return;
       }
