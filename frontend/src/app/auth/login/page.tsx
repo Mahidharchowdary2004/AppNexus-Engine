@@ -37,7 +37,8 @@ export default function LoginPage() {
   };
 
   useEffect(() => {
-    if (!auth || processingRedirect.current) return;
+    const currentAuth = auth;
+    if (!currentAuth || processingRedirect.current) return;
 
     const checkRedirect = async () => {
       if (processingRedirect.current) return;
@@ -45,7 +46,7 @@ export default function LoginPage() {
       
       try {
         log("Checking redirect result...");
-        const result = await getRedirectResult(auth);
+        const result = await getRedirectResult(currentAuth);
         
         if (!result) {
           log("No redirect result (normal load)");
@@ -84,7 +85,10 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
-    if (!auth || !googleProvider) {
+    const currentAuth = auth;
+    const currentGoogleProvider = googleProvider;
+
+    if (!currentAuth || !currentGoogleProvider) {
       setError('Google Login is not configured. Please check your environment variables.');
       return;
     }
@@ -92,7 +96,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       log('Starting Google popup flow...');
-      const popupResult = await signInWithPopup(auth, googleProvider);
+      const popupResult = await signInWithPopup(currentAuth, currentGoogleProvider);
       await completeFirebaseLogin(popupResult);
     } catch (err: any) {
       console.error('Google Auth Error:', err);
@@ -101,7 +105,7 @@ export default function LoginPage() {
       if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/cancelled-popup-request') {
         try {
           log('Falling back to redirect flow...');
-          await signInWithRedirect(auth, googleProvider);
+          await signInWithRedirect(currentAuth, currentGoogleProvider);
           return;
         } catch (redirectErr: any) {
           console.error('Google Redirect Fallback Error:', redirectErr);
