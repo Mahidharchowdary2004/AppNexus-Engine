@@ -256,29 +256,6 @@ export default function LoginPage() {
           <Link href="/auth/register" className="text-blue-400 font-bold hover:text-blue-300 transition-colors">Create one for free</Link>
         </p>
       </div>
-
-      {/* Auth Debug Monitor */}
-      <div className="fixed bottom-4 right-4 z-[200] max-w-[280px]">
-        <div className="bg-black/80 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-2xl">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Auth Debugger</span>
-            <div className="flex gap-1">
-              <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
-              <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse delay-75" />
-              <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse delay-150" />
-            </div>
-          </div>
-          <div className="space-y-1">
-            {debugLog.length === 0 && <p className="text-[10px] text-slate-500 italic">No activity yet...</p>}
-            {debugLog.map((msg, i) => (
-              <div key={i} className="text-[10px] font-mono text-slate-300 flex gap-2">
-                <span className="text-slate-600">[{i}]</span>
-                <span className="truncate">{msg}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
