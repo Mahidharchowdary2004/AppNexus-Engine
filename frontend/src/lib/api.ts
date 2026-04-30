@@ -17,6 +17,19 @@ function unwrapAuthPayload<T>(payload: any): T {
   return payload as T;
 }
 
+type AuthUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  avatar?: string;
+};
+
+type AuthResult = {
+  token: string;
+  user: AuthUser;
+};
+
 // Attach JWT token automatically
 api.interceptors.request.use((config) => {
   const token = Cookies.get('token') || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
@@ -43,13 +56,13 @@ api.interceptors.response.use(
 // Auth APIs
 export const authApi = {
   register: (data: { email: string; password: string; name: string }) =>
-    api.post('/auth/register', data).then(r => unwrapAuthPayload(r.data)),
+    api.post('/auth/register', data).then(r => unwrapAuthPayload<AuthResult>(r.data)),
   login: (data: { email: string; password: string }) =>
-    api.post('/auth/login', data).then(r => unwrapAuthPayload(r.data)),
+    api.post('/auth/login', data).then(r => unwrapAuthPayload<AuthResult>(r.data)),
   firebaseLogin: (idToken: string) =>
-    api.post('/auth/firebase', { idToken }).then(r => unwrapAuthPayload(r.data)),
-  me: () => api.get('/auth/me').then(r => unwrapAuthPayload(r.data)),
-  logout: () => api.post('/auth/logout').then(r => unwrapAuthPayload(r.data)),
+    api.post('/auth/firebase', { idToken }).then(r => unwrapAuthPayload<AuthResult>(r.data)),
+  me: () => api.get('/auth/me').then(r => unwrapAuthPayload<AuthUser>(r.data)),
+  logout: () => api.post('/auth/logout').then(r => unwrapAuthPayload<{ success?: boolean }>(r.data)),
 };
 
 // App management APIs
