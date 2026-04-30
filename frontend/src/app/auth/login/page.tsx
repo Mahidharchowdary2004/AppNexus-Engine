@@ -21,22 +21,28 @@ export default function LoginPage() {
 
     getRedirectResult(auth)
       .then(async (result) => {
-        if (!result) return;
+        console.log('Redirect result:', result); // 👈 add this
+        if (!result) {
+          console.log('No redirect result found'); // 👈 add this
+          return;
+        }
 
         setLoading(true);
+        console.log('Got user:', result.user.email); // 👈 add this
         const idToken = await result.user.getIdToken();
+        console.log('Got idToken, calling firebaseLogin...'); // 👈 add this
         await firebaseLogin(idToken);
+        console.log('firebaseLogin success, redirecting...'); // 👈 add this
         router.push('/dashboard');
       })
       .catch((err) => {
-        if (err.code !== 'auth/no-auth-event') {
-          console.error('Redirect result error:', err);
-          setError(`Authentication failed: ${err.message}`);
-        }
+        console.error('Redirect result error code:', err.code); // 👈 add this
+        console.error('Redirect result error message:', err.message); // 👈 add this
+        console.error('Full error:', err); // 👈 add this
+        setError(`Authentication failed: ${err.message}`);
       })
       .finally(() => setLoading(false));
   }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
