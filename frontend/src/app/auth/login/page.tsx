@@ -12,6 +12,7 @@ export default function LoginPage() {
   const { login, firebaseLogin } = useAuth();
   const router = useRouter();
   const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+  const useBackendGoogleOAuth = process.env.NEXT_PUBLIC_USE_BACKEND_GOOGLE_OAUTH === 'true';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -101,13 +102,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isProduction) {
-        if (apiBaseUrl) {
+        if (useBackendGoogleOAuth && apiBaseUrl) {
           log('Using backend Google OAuth flow in production...');
           window.location.href = `${apiBaseUrl}/api/auth/google`;
           return;
         }
 
-        log('API URL missing, falling back to Firebase redirect flow...');
+        log('Using Firebase redirect flow in production...');
         await signInWithRedirect(currentAuth, currentGoogleProvider);
         return;
       }
