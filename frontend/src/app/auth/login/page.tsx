@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { auth, googleProvider } from '@/lib/firebase';
 import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { useEffect } from 'react';
+
 export default function LoginPage() {
   const { login, firebaseLogin } = useAuth();
   const router = useRouter();
@@ -19,30 +20,31 @@ export default function LoginPage() {
   useEffect(() => {
     if (!auth) return;
 
+    // Check if we just returned from a Google Redirect
     getRedirectResult(auth)
       .then(async (result) => {
-        console.log('Redirect result:', result); // 👈 add this
-        if (!result) {
-          console.log('No redirect result found'); // 👈 add this
-          return;
-        }
+        if (!result) return;
 
         setLoading(true);
-        console.log('Got user:', result.user.email); // 👈 add this
-        const idToken = await result.user.getIdToken();
-        console.log('Got idToken, calling firebaseLogin...'); // 👈 add this
-        await firebaseLogin(idToken);
-        console.log('firebaseLogin success, redirecting...'); // 👈 add this
-        router.push('/dashboard');
+        try {
+          const idToken = await result.user.getIdToken();
+          await firebaseLogin(idToken);
+          router.push('/dashboard');
+        } catch (err: any) {
+          console.error('Post-redirect login error:', err);
+          setError(err.response?.data?.error || 'Failed to sync with backend');
+          setLoading(false);
+        }
       })
       .catch((err) => {
-        console.error('Redirect result error code:', err.code); // 👈 add this
-        console.error('Redirect result error message:', err.message); // 👈 add this
-        console.error('Full error:', err); // 👈 add this
-        setError(`Authentication failed: ${err.message}`);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+        console.error('Redirect result error:', err);
+        if (err.code !== 'auth/no-auth-event') {
+          setError(`Authentication failed: ${err.message}`);
+        }
+        setLoading(false);
+      });
+  }, [auth, firebaseLogin, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -66,16 +68,29 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithRedirect(auth, googleProvider);
-      // Page will redirect to Google — code below won't run
     } catch (err: any) {
       console.error('Google Auth Error:', err);
       setError(`Authentication failed: ${err.message || 'Please try again.'}`);
-      setLoading(false); // Only reset if redirect itself fails
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Premium Loading Overlay */}
+      {loading && (
+        <div className="absolute inset-0 z-[100] bg-slate-950/80 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="relative w-20 h-20 mb-8">
+            <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full" />
+            <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="absolute inset-4 border-4 border-cyan-400/20 rounded-full" />
+            <div className="absolute inset-4 border-4 border-cyan-400 border-b-transparent rounded-full animate-[spin_1.5s_linear_infinite_reverse]" />
+          </div>
+          <h2 className="text-xl font-bold text-white tracking-tight animate-pulse">Authenticating with Nexus Engine</h2>
+          <p className="text-slate-400 text-sm mt-2">Securing your session...</p>
+        </div>
+      )}
+
       {/* Background Orbs */}
       <div className="absolute top-0 -left-20 w-96 h-96 bg-blue-600/20 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-0 -right-20 w-96 h-96 bg-cyan-600/10 rounded-full blur-[100px] pointer-events-none" />
