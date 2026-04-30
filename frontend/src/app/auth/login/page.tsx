@@ -88,6 +88,7 @@ export default function LoginPage() {
     log('Google button clicked');
     const currentAuth = auth;
     const currentGoogleProvider = googleProvider;
+    const isProduction = process.env.NODE_ENV === 'production';
 
     if (!currentAuth || !currentGoogleProvider) {
       const configStatus = hasRequiredFirebaseConfig ? 'env-present-auth-missing' : 'firebase-env-missing';
@@ -98,6 +99,12 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
+      if (isProduction) {
+        log('Using redirect flow in production...');
+        await signInWithRedirect(currentAuth, currentGoogleProvider);
+        return;
+      }
+
       log('Starting Google popup flow...');
       const popupResult = await signInWithPopup(currentAuth, currentGoogleProvider);
       await completeFirebaseLogin(popupResult);
