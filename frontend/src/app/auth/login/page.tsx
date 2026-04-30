@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { auth, googleProvider } from '@/lib/firebase';
+import { auth, googleProvider, hasRequiredFirebaseConfig } from '@/lib/firebase';
 import { signInWithRedirect, getRedirectResult, signInWithPopup, type UserCredential } from 'firebase/auth';
 
 export default function LoginPage() {
@@ -85,11 +85,14 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
+    log('Google button clicked');
     const currentAuth = auth;
     const currentGoogleProvider = googleProvider;
 
     if (!currentAuth || !currentGoogleProvider) {
-      setError('Google Login is not configured. Please check your environment variables.');
+      const configStatus = hasRequiredFirebaseConfig ? 'env-present-auth-missing' : 'firebase-env-missing';
+      log(`Google init blocked: ${configStatus}`);
+      setError('Google Login is not configured. Check Firebase env vars and redeploy frontend.');
       return;
     }
     setError('');
