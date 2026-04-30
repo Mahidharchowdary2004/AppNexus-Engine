@@ -10,10 +10,23 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
+const hasRequiredFirebaseConfig =
+  !!firebaseConfig.apiKey &&
+  !!firebaseConfig.authDomain &&
+  !!firebaseConfig.projectId &&
+  !!firebaseConfig.appId;
 
-googleProvider.setCustomParameters({ prompt: 'select_account' });
+const app = hasRequiredFirebaseConfig
+  ? getApps().length > 0
+    ? getApp()
+    : initializeApp(firebaseConfig)
+  : null;
 
-export { auth, googleProvider };
+const auth = app ? getAuth(app) : null;
+const googleProvider = app ? new GoogleAuthProvider() : null;
+
+if (googleProvider) {
+  googleProvider.setCustomParameters({ prompt: 'select_account' });
+}
+
+export { auth, googleProvider, hasRequiredFirebaseConfig };

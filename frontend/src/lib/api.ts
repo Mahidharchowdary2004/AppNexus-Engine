@@ -35,13 +35,13 @@ api.interceptors.response.use(
 // Auth APIs
 export const authApi = {
   register: (data: { email: string; password: string; name: string }) =>
-    api.post('/auth/register', data).then(r => r.data),
+    api.post('/auth/register', data).then(r => r.data.data),
   login: (data: { email: string; password: string }) =>
-    api.post('/auth/login', data).then(r => r.data),
+    api.post('/auth/login', data).then(r => r.data.data),
   firebaseLogin: (idToken: string) =>
-    api.post('/auth/firebase', { idToken }).then(r => r.data),
-  me: () => api.get('/auth/me').then(r => r.data),
-  logout: () => api.post('/auth/logout').then(r => r.data),
+    api.post('/auth/firebase', { idToken }).then(r => r.data.data),
+  me: () => api.get('/auth/me').then(r => r.data.data),
+  logout: () => api.post('/auth/logout').then(r => r.data.data),
 };
 
 // App management APIs

@@ -1,6 +1,6 @@
 'use client';
 // frontend/src/contexts/AuthContext.tsx
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import Cookies from 'js-cookie';
 import { authApi } from '@/lib/api';
 
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = Cookies.get('token') || localStorage.getItem('token');
     if (token) {
       authApi.me()
-        .then(res => setUser(res.data))
+        .then(res => setUser(res))
         .catch(() => {
           Cookies.remove('token');
           localStorage.removeItem('token');
@@ -43,40 +43,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const res = await authApi.login({ email, password });
-    const { token, user } = res.data;
-    Cookies.set('token', token, { expires: 7, secure: process.env.NODE_ENV === 'production' });
+    const { token, user } = res;
+    const isProd = process.env.NODE_ENV === 'production';
+    Cookies.set('token', token, { 
+      expires: 7, 
+      secure: isProd,
+      sameSite: 'lax'
+    });
     localStorage.setItem('token', token);
     setUser(user);
-  };
+  }, []);
 
-  const firebaseLogin = async (idToken: string) => {
+  const firebaseLogin = useCallback(async (idToken: string) => {
     const res = await authApi.firebaseLogin(idToken);
-    const { token, user } = res.data;
-    Cookies.set('token', token, { expires: 7, secure: process.env.NODE_ENV === 'production' });
+    const { token, user } = res;
+    
+    // On localhost, we shouldn't use secure: true unless we're on HTTPS
+    const isProd = process.env.NODE_ENV === 'production';
+    Cookies.set('token', token, { 
+      expires: 7, 
+      secure: isProd,
+      sameSite: 'lax'
+    });
+    
     localStorage.setItem('token', token);
     setUser(user);
-  };
+  }, []);
 
-  const register = async (email: string, password: string, name: string) => {
+  const register = useCallback(async (email: string, password: string, name: string) => {
     const res = await authApi.register({ email, password, name });
-    const { token, user } = res.data;
-    Cookies.set('token', token, { expires: 7 });
+    const { token, user } = res;
+    const isProd = process.env.NODE_ENV === 'production';
+    Cookies.set('token', token, { 
+      expires: 7,
+      secure: isProd,
+      sameSite: 'lax'
+    });
     localStorage.setItem('token', token);
     setUser(user);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     authApi.logout().catch(() => {});
     Cookies.remove('token');
     localStorage.removeItem('token');
     setUser(null);
     window.location.href = '/auth/login';
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    user,
+    loading,
+    login,
+    firebaseLogin,
+    register,
+    logout,
+    isAuthenticated: !!user
+  }), [user, loading, login, firebaseLogin, register, logout]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, firebaseLogin, register, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

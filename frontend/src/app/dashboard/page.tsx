@@ -1,6 +1,6 @@
 'use client';
 // frontend/src/app/dashboard/page.tsx
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -125,7 +125,7 @@ const DEMO_CONFIGS = [
 ];
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
@@ -134,16 +134,7 @@ export default function DashboardPage() {
   const [jsonQuestions, setJsonQuestions] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [creationStep, setCreationStep] = useState(0);
-  const CREATION_STEPS = [
-    'Analyzing configuration...',
-    'Validating architecture schema...',
-    'Generating data models...',
-    'Building dynamic navigation...',
-    'Initializing Nexus Engine...',
-    'Launching application...'
-  ];
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
   const { data, isLoading } = useQuery({
     queryKey: ['apps'],
     queryFn: appsApi.list,
@@ -154,6 +145,33 @@ export default function DashboardPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['apps'] }),
   });
 
+  // Guard: Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth/login');
+    }
+  }, [user, authLoading, router]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-400 font-mono text-xs uppercase tracking-widest">Initialising Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return null;
+  const CREATION_STEPS = [
+    'Analyzing configuration...',
+    'Validating architecture schema...',
+    'Generating data models...',
+    'Building dynamic navigation...',
+    'Initializing Nexus Engine...',
+    'Launching application...'
+  ];
   const apps = data?.data || [];
 
   const handleCreate = async (config?: Record<string, unknown>) => {

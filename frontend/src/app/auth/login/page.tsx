@@ -1,13 +1,12 @@
 'use client';
 export const dynamic = 'force-dynamic';
 // frontend/src/app/auth/login/page.tsx
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
-import { useEffect } from 'react';
+import { signInWithRedirect, getRedirectResult, signInWithPopup, type UserCredential } from 'firebase/auth';
 
 export default function LoginPage() {
   const { login, firebaseLogin } = useAuth();
@@ -16,34 +15,59 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+  const log = (msg: string) => {
+    console.log(`[AUTH-DEBUG] ${msg}`);
+    setDebugLog(prev => [...prev.slice(-4), msg]);
+  };
+
+  const processingRedirect = useRef(false);
+
+  const completeFirebaseLogin = async (result: UserCredential) => {
+    setLoading(true);
+    log(`Success: ${result.user.email}`);
+
+    const idToken = await result.user.getIdToken();
+    log('Syncing with backend...');
+
+    await firebaseLogin(idToken);
+    log('Auth synced. Redirecting to dashboard...');
+
+    window.location.href = '/dashboard';
+  };
 
   useEffect(() => {
-    if (!auth) return;
+    if (!auth || processingRedirect.current) return;
 
-    // Check if we just returned from a Google Redirect
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (!result) return;
-
-        setLoading(true);
-        try {
-          const idToken = await result.user.getIdToken();
-          await firebaseLogin(idToken);
-          router.push('/dashboard');
-        } catch (err: any) {
-          console.error('Post-redirect login error:', err);
-          setError(err.response?.data?.error || 'Failed to sync with backend');
-          setLoading(false);
+    const checkRedirect = async () => {
+      if (processingRedirect.current) return;
+      processingRedirect.current = true;
+      
+      try {
+        log("Checking redirect result...");
+        const result = await getRedirectResult(auth);
+        
+        if (!result) {
+          log("No redirect result (normal load)");
+          processingRedirect.current = false; // Reset if it was just a normal load
+          return;
         }
-      })
-      .catch((err) => {
-        console.error('Redirect result error:', err);
+
+        await completeFirebaseLogin(result);
+      } catch (err: any) {
+        console.error('Redirect Error:', err);
+        log(`Error: ${err.code || err.message}`);
+        
         if (err.code !== 'auth/no-auth-event') {
-          setError(`Authentication failed: ${err.message}`);
+          setError(err.message || 'Authentication failed during redirect');
         }
         setLoading(false);
-      });
-  }, [auth, firebaseLogin, router]);
+        processingRedirect.current = false;
+      }
+    };
+
+    checkRedirect();
+  }, [auth, firebaseLogin]); // Depend on firebaseLogin to ensure we have the latest context function
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,9 +91,27 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await signInWithRedirect(auth, googleProvider);
+      log('Starting Google popup flow...');
+      const popupResult = await signInWithPopup(auth, googleProvider);
+      await completeFirebaseLogin(popupResult);
     } catch (err: any) {
       console.error('Google Auth Error:', err);
+      log(`Popup flow failed: ${err.code || err.message}`);
+
+      if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/cancelled-popup-request') {
+        try {
+          log('Falling back to redirect flow...');
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr: any) {
+          console.error('Google Redirect Fallback Error:', redirectErr);
+          log(`Redirect fallback failed: ${redirectErr.code || redirectErr.message}`);
+          setError(`Authentication failed: ${redirectErr.message || 'Please try again.'}`);
+          setLoading(false);
+          return;
+        }
+      }
+
       setError(`Authentication failed: ${err.message || 'Please try again.'}`);
       setLoading(false);
     }
@@ -199,6 +241,29 @@ export default function LoginPage() {
           Don't have an account?{' '}
           <Link href="/auth/register" className="text-blue-400 font-bold hover:text-blue-300 transition-colors">Create one for free</Link>
         </p>
+      </div>
+
+      {/* Auth Debug Monitor */}
+      <div className="fixed bottom-4 right-4 z-[200] max-w-[280px]">
+        <div className="bg-black/80 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-2xl">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Auth Debugger</span>
+            <div className="flex gap-1">
+              <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
+              <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse delay-75" />
+              <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse delay-150" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            {debugLog.length === 0 && <p className="text-[10px] text-slate-500 italic">No activity yet...</p>}
+            {debugLog.map((msg, i) => (
+              <div key={i} className="text-[10px] font-mono text-slate-300 flex gap-2">
+                <span className="text-slate-600">[{i}]</span>
+                <span className="truncate">{msg}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
