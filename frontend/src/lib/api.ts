@@ -9,6 +9,14 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+function unwrapAuthPayload<T>(payload: any): T {
+  if (payload && typeof payload === 'object') {
+    if ('data' in payload && payload.data) return payload.data as T;
+    return payload as T;
+  }
+  return payload as T;
+}
+
 // Attach JWT token automatically
 api.interceptors.request.use((config) => {
   const token = Cookies.get('token') || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
@@ -35,13 +43,13 @@ api.interceptors.response.use(
 // Auth APIs
 export const authApi = {
   register: (data: { email: string; password: string; name: string }) =>
-    api.post('/auth/register', data).then(r => r.data.data),
+    api.post('/auth/register', data).then(r => unwrapAuthPayload(r.data)),
   login: (data: { email: string; password: string }) =>
-    api.post('/auth/login', data).then(r => r.data.data),
+    api.post('/auth/login', data).then(r => unwrapAuthPayload(r.data)),
   firebaseLogin: (idToken: string) =>
-    api.post('/auth/firebase', { idToken }).then(r => r.data.data),
-  me: () => api.get('/auth/me').then(r => r.data.data),
-  logout: () => api.post('/auth/logout').then(r => r.data.data),
+    api.post('/auth/firebase', { idToken }).then(r => unwrapAuthPayload(r.data)),
+  me: () => api.get('/auth/me').then(r => unwrapAuthPayload(r.data)),
+  logout: () => api.post('/auth/logout').then(r => unwrapAuthPayload(r.data)),
 };
 
 // App management APIs
